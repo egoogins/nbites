@@ -70,7 +70,8 @@ void MMKalmanFilter::update(messages::VisionBall    visionBall,
 
         // Update our observation buffer for re-initializing the moving filter
         curEntry = (curEntry+1)%params.bufferSize;
-        obsvBuffer[curEntry] = CartesianObservation(visRelX, visRelY);
+        obsvBuffer[curEntry] = CartesianObservation(getMovingRelX(),
+                                                    getMovingRelY());
 
         if (!fullBuffer && curEntry==0)
         { // If buffer wasnt full but is now
@@ -92,38 +93,29 @@ void MMKalmanFilter::update(messages::VisionBall    visionBall,
             initialize(visRelX, visRelY, params.initCovX, params.initCovY);
         }
 
-        // else if (fullBuffer) {
-        //     // Calc velocity through these frames, if high reset moving filter
-        //     CartesianObservation vel = calcVelocityOfBuffer();
+        else if (fullBuffer) {
+            // Calc velocity through these frames, if high reset moving filter
+            CartesianObservation vel = calcVelocityOfBuffer();
+            std::cout << "Calculated a velocity from the buffer:  "
+                      << vel.relX << "  " << vel.relY << std::endl;
 
-        //     float speedThroughFrames = calcSpeed(vel.relX, vel.relY);
+            // If moving velocity <10, give this a try
+            if ((filters.at((unsigned)1)->getSpeed() < 10.f)
+                && (calcSpeed(vel.relX, vel.relY) > 10.f))
+            {
+                std::cout << "\nBall Kicked!" << std::endl;
+                ufvector4 newMovingX = filters.at((unsigned)0)->getStateEst();
+                newMovingX(2) = vel.relX;
+                newMovingX(3) = vel.relY;
+                ufmatrix4 newMovingCov = boost::numeric::ublas::identity_matrix <float>(4);
+                newMovingCov(0,0) = 10.f;
+                newMovingCov(1,1) = 10.f;
+                newMovingCov(2,2) = 20.f;
+                newMovingCov(3,3) = 20.f;
 
-        //     // Calc diff between observation and estimata
-        //     float estDiff = calcSpeed(visRelX - filters.at((unsigned)0)->getRelXPosEst(),
-        //                               visRelY - filters.at((unsigned)0)->getRelYPosEst());
-
-        //     // Much higher than our current estimate
-        //     // if ((speedThroughFrames > filters.at((unsigned)1)->getSpeed() + 60.f)
-        //     //     && (estDiff > params.badStationaryThresh))
-        //     //if(estDiff > params.badStationaryThresh)
-
-        //     // If moving velocity <10, give this a try
-        //     if (std::abs(filters.at((unsigned)1)->getSpeed()) < 10.f
-        //         && speedThroughFrames > 10.f)
-        //     {
-        //         //std::cout << "\nBall Kicked!" << std::endl;
-        //         ufvector4 newMovingX = filters.at((unsigned)0)->getStateEst();
-        //         newMovingX(2) = vel.relX;
-        //         newMovingX(3) = vel.relY;
-        //         ufmatrix4 newMovingCov = boost::numeric::ublas::identity_matrix <float>(4);
-        //         newMovingCov(0,0) = 10.f;
-        //         newMovingCov(1,1) = 10.f;
-        //         newMovingCov(2,2) = 20.f;
-        //         newMovingCov(3,3) = 20.f;
-
-        //         filters.at((unsigned)1)->initialize(newMovingX, newMovingCov);
-        //     }
-        // }
+                filters.at((unsigned)1)->initialize(newMovingX, newMovingCov);
+            }
+        }
 
         // Now correct our filters with the vision observation
         updateWithVision(visionBall);
@@ -135,8 +127,11 @@ void MMKalmanFilter::update(messages::VisionBall    visionBall,
 
         // don't use/wipeout buffer
         fullBuffer = false;
+        std::cout << "Wipeout buffer" << std::endl;
         curEntry = 0;
     }
+
+    //std::cout << "Speed: " << filters.at((unsigned)1)->getSpeed() << std::endl;
 
     // Determine filter
     if(TRACK_MOVEMENT) {
@@ -411,16 +406,24 @@ CartesianObservation MMKalmanFilter::calcVelocityOfBuffer()
     // Also check that we're getting these values from relatively close balls
     //    ie within 300 centimeters
     float dist = calcSpeed(obsvBuffer[curEntry].relX, obsvBuffer[curEntry].relY);
-    if (dist > 300.f)
+    if (dist > 400.f) {
         consistent = false;
+    }
+
+    std::cout << "Calc velocities in bufffer" << std::endl;
 
     for(int i=1; i<params.bufferSize && consistent; i++)
     {
-        //current speed
-        float curSpeed = calcSpeed((obsvBuffer[i].relX - obsvBuffer[i-1].relX)/deltaTime,
-                                   (obsvBuffer[i].relY - obsvBuffer[i-1].relY)/deltaTime);
+        float velBetweenFrameX = (obsvBuffer[i].relX - obsvBuffer[i-1].relX)/deltaTime;
+        float velBetweenFrameY = (obsvBuffer[i].relY - obsvBuffer[i-1].relY)/deltaTime;
 
-        if (diff(curSpeed,estSpeed) > 100)
+        float diffXVel = diff(calcVel.relX, velBetweenFrameX);
+        float diffYVel = diff(calcVel.relY, velBetweenFrameY);
+
+        std::cout << "diffX, diffY " << diffXVel << " " << diffYVel << std::endl;
+
+        // POSSIBLE_GOALIE_HACK change diff
+        if ((diffXVel > 20) || (diffYVel) > 20)
             consistent = false;
     }
 

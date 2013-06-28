@@ -23,7 +23,7 @@ using namespace NBMath;
 namespace man{
 namespace balltrack{
 
-static const int BUFF_LENGTH = 10;
+static const int BUFF_LENGTH = 5;
 
 // HACK HACK HACK - Currently completely made up and untested
 // @TODO test this and determine correct values
