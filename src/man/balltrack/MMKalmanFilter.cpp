@@ -11,7 +11,8 @@ namespace balltrack{
  *          State est and vis history can stay zero,
  *          Same with bestFilter, stationary, and lastUpdateTime
  */
-MMKalmanFilter::MMKalmanFilter(MMKalmanFilterParams params_)
+MMKalmanFilter::MMKalmanFilter(MMKalmanFilterParams params_) :
+    kickDetector()
 {
     params = params_;
 
@@ -26,6 +27,8 @@ MMKalmanFilter::MMKalmanFilter(MMKalmanFilterParams params_)
     prevCovEst   = boost::numeric::ublas::identity_matrix <float>(4);
     stateEst     = boost::numeric::ublas::zero_vector<float> (4);
     covEst       = boost::numeric::ublas::identity_matrix <float>(4);
+
+
 
     initialize();
 }
@@ -96,14 +99,12 @@ void MMKalmanFilter::update(messages::VisionBall    visionBall,
         else if (fullBuffer) {
             // Calc velocity through these frames, if high reset moving filter
             CartesianObservation vel = calcVelocityOfBuffer();
-            std::cout << "Calculated a velocity from the buffer:  "
-                      << vel.relX << "  " << vel.relY << std::endl;
 
             // If moving velocity <10, give this a try
             if ((filters.at((unsigned)1)->getSpeed() < 10.f)
                 && (calcSpeed(vel.relX, vel.relY) > 10.f))
             {
-                std::cout << "\nBall Kicked!" << std::endl;
+                std::cout << "\nBall Kicked!\n" << std::endl;
                 ufvector4 newMovingX = filters.at((unsigned)0)->getStateEst();
                 newMovingX(2) = vel.relX;
                 newMovingX(3) = vel.relY;
@@ -121,13 +122,16 @@ void MMKalmanFilter::update(messages::VisionBall    visionBall,
         updateWithVision(visionBall);
 
         updatePredictions();
+
+        if(kickDetector.checkForKick(getMovingRelX(), getMovingRelY()) )
+            std::cout << "\n kick!?!? \n" << std::endl;
+
     }
     else {
         consecutiveObservation = false;
 
         // don't use/wipeout buffer
         fullBuffer = false;
-        std::cout << "Wipeout buffer" << std::endl;
         curEntry = 0;
     }
 
@@ -410,8 +414,6 @@ CartesianObservation MMKalmanFilter::calcVelocityOfBuffer()
         consistent = false;
     }
 
-    std::cout << "Calc velocities in bufffer" << std::endl;
-
     for(int i=1; i<params.bufferSize && consistent; i++)
     {
         float velBetweenFrameX = (obsvBuffer[i].relX - obsvBuffer[i-1].relX)/deltaTime;
@@ -419,8 +421,6 @@ CartesianObservation MMKalmanFilter::calcVelocityOfBuffer()
 
         float diffXVel = diff(calcVel.relX, velBetweenFrameX);
         float diffYVel = diff(calcVel.relY, velBetweenFrameY);
-
-        std::cout << "diffX, diffY " << diffXVel << " " << diffYVel << std::endl;
 
         // POSSIBLE_GOALIE_HACK change diff
         if ((diffXVel > 20) || (diffYVel) > 20)

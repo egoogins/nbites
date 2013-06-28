@@ -17,6 +17,7 @@ add_library(
 
 # Link project to appropriate libraries.
 target_link_libraries(balltrack
+                      localization
                       support
 		      portals
 		      messages

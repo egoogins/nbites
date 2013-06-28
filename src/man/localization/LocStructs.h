@@ -19,10 +19,8 @@
 #include <boost/random/uniform_real.hpp>
 #include <boost/math/constants/constants.hpp>
 
-namespace man
-{
-namespace localization
-{
+namespace man {
+namespace localization {
 /**
  * @struct ParticleFilterParams
  * @brief Parameters used for the particle filter.
@@ -115,7 +113,7 @@ struct RingBuffer
 
     int curEntry;
 
-    RingBuffer(float bufferLength_)
+    RingBuffer(int bufferLength_)
         : bufferLength(bufferLength_)
     {
         buffer = new T[bufferLength];
@@ -125,6 +123,10 @@ struct RingBuffer
     void add(T newElement) {
         curEntry = (curEntry++)%bufferLength;
         buffer[curEntry] = newElement;
+    }
+
+    T get() {
+        return buffer[curEntry];
     }
 
 };
@@ -160,6 +162,8 @@ struct Line {
     Point start, end;
     float slope;
     bool vert;
+
+    Line(){};
 
     Line(Point start_, Point end_) :
         start(start_),
@@ -222,12 +226,12 @@ struct Line {
             return Point(-1000000.f, -1000000.f);// return crazy value to reject intersect
     }
 
-    bool containsPoint(Point p)
+    bool containsPoint(Point p, float error = ERROR)
     {
         float off = std::fabs((start.y - p.y)*(end.x - p.x) - (end.y - p.y)*(start.x - p.x));
         if (vert) {
             // check on the line
-            if(std::fabs(p.x - start.x) < ERROR)
+            if(std::fabs(p.x - start.x) < error)
                 // check on the segment
                 if((start.y <= p.y && p.y <= end.y) || (start.y >= p.y && p.y >= end.y))
                     return true;
@@ -235,7 +239,7 @@ struct Line {
         }
        // check on the line
         else {
-            if (std::fabs((start.y - p.y)*(end.x - p.x) - (end.y - p.y)*(start.x - p.x)) < ERROR) {
+            if (std::fabs((start.y - p.y)*(end.x - p.x) - (end.y - p.y)*(start.x - p.x)) < error) {
                 // check on the segment
                 if((start.x <= p.x && p.x <= end.x) || (start.x >= p.x && p.x >= end.x))
                     return true;

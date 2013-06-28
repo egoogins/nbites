@@ -155,6 +155,7 @@ private:
     long long int lastUpdateTime;
     float deltaTime;
 
+    KickDetector kickDetector;
 };
 
 
