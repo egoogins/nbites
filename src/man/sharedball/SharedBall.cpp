@@ -27,8 +27,11 @@ void SharedBallModule::run_() {
 
     for (int i=0; i<NUM_PLAYERS_PER_TEAM; i++) {
         worldModelIn[i].latch();
-        if(i == 0)
+        if(i == 0) {
             incorporateGoalieWorldModel(worldModelIn[i].message());
+            if(updatesThisFrame>0) // if goalie saw it, trust in the goalie
+                break;
+        }
         else
             incorporateWorldModel(worldModelIn[i].message());
     }
@@ -86,8 +89,8 @@ void SharedBallModule::incorporateGoalieWorldModel(messages::WorldModel newModel
         float globalX = FIELD_WHITE_LEFT_SIDELINE_X + newModel.ball_dist()*cosHB;
         float globalY = CENTER_FIELD_Y + newModel.ball_dist()*sinHB;
 
-        sumFrameX = (ALPHA+alphaGrowth)*globalX + (1-(ALPHA+alphaGrowth))*x;
-        sumFrameY = (ALPHA+alphaGrowth)*globalY + (1-(ALPHA+alphaGrowth))*y;
+        sumFrameX += (ALPHA+alphaGrowth)*globalX + (1-(ALPHA+alphaGrowth))*x;
+        sumFrameY += (ALPHA+alphaGrowth)*globalY + (1-(ALPHA+alphaGrowth))*y;
         updatesThisFrame++;
     }
 }
