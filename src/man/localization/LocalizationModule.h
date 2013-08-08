@@ -1,13 +1,13 @@
 /*
  * @brief  The localization module class. Takes input from motion and vision for
- *             calculations, also an inPortal for resetting
+ *             calculations, also an inPortal for resetting. Uses a LocSystem for
+ *             processing data, to change a Localization System used, alter the
+ *             allocation in the constructor
  *
  * @author EJ Googins <egoogins@bowdoin.edu>
  * @date   February 2013
  */
 #pragma once
-
-#include "DebugConfig.h"
 
 /** Messages **/
 #include "RoboGrams.h"
@@ -18,18 +18,11 @@
 #include "BallModel.pb.h"
 
 /** Filter Headers **/
-#include "SensorModel.h"
-#include "MotionModel.h"
-#include "ParticleFilter.h"
-#include "VisionSystem.h"
-#include "MotionSystem.h"
+#include "LocSystem.h"
 
-#include <boost/shared_ptr.hpp>
+namespace man {
+namespace localization{
 
-namespace man
-{
-namespace localization
-{
 /**
  * @class LocalizationModule
  */
@@ -66,9 +59,16 @@ protected:
      */
     void update();
 
-    ParticleFilter * particleFilter;
+private:
+    // The localization system instance
+    LocSystem* locSystem;
+
+    // Record the last time the localization was reset
     long long lastReset;
+
+    // Store the current odometry to calculate changes between frames
     messages::RobotLocation curOdometry;
 };
+
 } // namespace localization
 } // namespace man

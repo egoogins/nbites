@@ -1,6 +1,9 @@
 #include "LocalizationModule.h"
+
 #include "Profiler.h"
 #include "RoboCupGameControlData.h"
+#include "ParticleFilter.h"
+#include "DebugConfig.h"
 
 namespace man {
 namespace localization {
@@ -10,14 +13,14 @@ LocalizationModule::LocalizationModule()
       output(base()),
       particleOutput(base())
 {
-    particleFilter = new ParticleFilter();
+    locSystem = new ParticleFilter();
     // Chooose on the field looking up as a random initial
-    particleFilter->resetLocTo(110,658,-1.5);
+    locSystem->resetLocTo(110,658,-1.5);
 }
 
 LocalizationModule::~LocalizationModule()
 {
-    delete particleFilter;
+    delete locSystem;
 }
 
 void LocalizationModule::update()
@@ -27,7 +30,7 @@ void LocalizationModule::update()
     if (lastReset != resetInput.message().timestamp())
     {
         lastReset = resetInput.message().timestamp();
-        particleFilter->resetLocTo(resetInput.message().x(),
+        locSystem->resetLocTo(resetInput.message().x(),
                                    resetInput.message().y(),
                                    resetInput.message().h());
     }
@@ -42,16 +45,16 @@ void LocalizationModule::update()
     // Update the Particle Filter with the new observations/odometry
 
     if (inSet)
-        particleFilter->update(curOdometry, visionInput.message(), ballInput.message());
+        locSystem->update(curOdometry, visionInput.message(), ballInput.message());
     else
 #endif
-        particleFilter->update(curOdometry, visionInput.message());
+        locSystem->update(curOdometry, visionInput.message());
 
     // Update the locMessage and the swarm (if logging)
-    portals::Message<messages::RobotLocation> locMessage(&particleFilter->
+    portals::Message<messages::RobotLocation> locMessage(&locSystem->
                                                          getCurrentEstimate());
 #if defined( LOG_LOCALIZATION) || defined(OFFLINE)
-    portals::Message<messages::ParticleSwarm> swarmMessage(&particleFilter->
+    portals::Message<messages::ParticleSwarm> swarmMessage(&locSystem->
                                                            getCurrentSwarm());
     particleOutput.setMessage(swarmMessage);
 #endif

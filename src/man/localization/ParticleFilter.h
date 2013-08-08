@@ -69,12 +69,12 @@ public:
      *  @brief Given a new motion and vision input, update the filter
      */
     void update(const messages::RobotLocation& motionInput,
-                const messages::VisionField&   visionInput);
+                          const messages::VisionField&   visionInput);
 
     // Overload to use ball info
     void update(const messages::RobotLocation& motionInput,
-                const messages::VisionField&   visionInput,
-                const messages::FilteredBall&    ballInput);
+                          const messages::VisionField&   visionInput,
+                          const messages::FilteredBall&    ballInput);
 
     float getMagnitudeError();
 
@@ -99,8 +99,8 @@ public:
      */
     Particle getBestParticle();
 
-    bool onDefendingSide() {return (poseEstimate.x() < CENTER_FIELD_X);};
-    bool nearMidField() {return (fabs(poseEstimate.x() - CENTER_FIELD_X) < 50);};
+    bool onDefendingSide() const {return (poseEstimate.x() < CENTER_FIELD_X);};
+    bool nearMidField() const {return (fabs(poseEstimate.x() - CENTER_FIELD_X) < 50);};
 
     /** Reset Functions **/
 
