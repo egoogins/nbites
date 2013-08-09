@@ -3,6 +3,8 @@
 namespace man {
 namespace localization {
 
+// Constants used to compensate for constance odometry error. Vary depending on factors such
+// as walk, carpet, robot, and friction. Massive hack, use only if you care about results.
 static const float FRICTION_FACTOR_X = 1.1f;
 static const float FRICTION_FACTOR_Y = 1.f;
 static const float FRICTION_FACTOR_H = 2.4f;
@@ -29,21 +31,13 @@ void MotionSystem::update(ParticleSet& particles,
                           const messages::RobotLocation& odometry,
                           float error)
 {
-    // Store the last odometry and set the current one
-    lastOdometry.set_x(curOdometry.x());
-    lastOdometry.set_y(curOdometry.y());
-    lastOdometry.set_h(curOdometry.h());
-    curOdometry.set_x(odometry.x());
-    curOdometry.set_y(odometry.y());
-    curOdometry.set_h(odometry.h());
+    // change into the robot frame
+    float dX_R = odometry.x() - lastOdometry.x();
+    float dY_R = odometry.y() - lastOdometry.y();
+    float dH_R = odometry.h() - lastOdometry.h();
 
-    // change in the robot frame
-    float dX_R = curOdometry.x() - lastOdometry.x();
-    float dY_R = curOdometry.y() - lastOdometry.y();
-    float dH_R = curOdometry.h() - lastOdometry.h();
-
+    // Ignore abnormally high changes in the system
     if( (std::fabs(dX_R) > 3.f) || (std::fabs(dY_R) > 3.f) ) {
-        //Probably reset odometry somewhere so skip a frame
         return;
     }
 
@@ -55,17 +49,22 @@ void MotionSystem::update(ParticleSet& particles,
 
         // Rotate from the robot frame to the global to add the translation
         float sinh, cosh;
-        sincosf(curOdometry.h() - particle->getLocation().h(),
+        sincosf(odometry.h() - particle->getLocation().h(),
                 &sinh, &cosh);
 
         dX = (cosh*dX_R + sinh*dY_R) * FRICTION_FACTOR_X;
-        dY = (cosh*dY_R - sinh*dX_R) * FRICTION_FACTOR_Y;
-        dH = dH_R                    * FRICTION_FACTOR_H; // just add the rotation
+        dY = (cosh*dY_R - sinh*dX_R)   * FRICTION_FACTOR_Y;
+        dH = dH_R                                   * FRICTION_FACTOR_H; // just add the rotation
 
         particle->shift(dX, dY, dH);
 
         noiseShiftWithOdo(particle, dX, dY, dH, error);
     }
+
+    // Save the current odometry
+    lastOdometry.set_x(odometry.x());
+    lastOdometry.set_y(odometry.y());
+    lastOdometry.set_h(odometry.h());
 }
 
 void MotionSystem::noiseShiftWithOdo(Particle* particle, float dX, float dY, float dH, float error) {
@@ -136,26 +135,6 @@ void MotionSystem::noiseShiftWithOdo(Particle* particle, float dX, float dY, flo
     boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > hShift(rng, hRange);
 
     particle->shift(xShift(), yShift(), hShift());
-}
-
-void MotionSystem::randomlyShiftParticle(Particle* particle, bool nearMid)
-{
-    float pumpNoise = 1.f;
-    if (nearMid)
-        pumpNoise = 2.f;
-
-    // TODO: This should be experimentally determined
-    boost::uniform_real<float> coordRange(-1.f * xAndYNoise * pumpNoise, xAndYNoise * pumpNoise);
-    boost::uniform_real<float> headRange (-1.f * hNoise    , hNoise);
-    boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > coordNoise(rng, coordRange);
-    boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > headNoise(rng, headRange);
-
-    // Determine random noise and shift the particle
-    messages::RobotLocation noise;
-    noise.set_x(coordNoise());
-    noise.set_y(coordNoise());
-    noise.set_h(NBMath::subPIAngle(headNoise()));
-    particle->shift(noise);
 }
 
 } // namespace localization

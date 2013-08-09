@@ -25,8 +25,6 @@ public:
                 const messages::RobotLocation& deltaMotionInfo,
                 float error);
 
-    void randomlyShiftParticle(Particle* particle, bool nearMid);
-
     void noiseShiftWithOdo(Particle* particle, float dX, float dY, float dH, float error);
 
     void setFallen(bool fallen);
@@ -40,7 +38,6 @@ private:
 
     bool robotFallen;
 
-    messages::RobotLocation curOdometry;
     messages::RobotLocation lastOdometry;
 };
 } // namespace localization
