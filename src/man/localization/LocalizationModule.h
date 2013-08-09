@@ -43,8 +43,8 @@ public:
     /** Out Portals **/
     portals::OutPortal<messages::RobotLocation> output;
 
+    // NOTE: specific to type of LocSystem being used
     portals::OutPortal<messages::ParticleSwarm> particleOutput;
-
 
     float lastMotionTimestamp;
     float lastVisionTimestamp;

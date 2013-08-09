@@ -49,7 +49,17 @@ void LocalizationModule::update()
         locSystem->update(motionInput.message(), visionInput.message());
 
     // Update the locMessage
-    portals::Message<messages::RobotLocation> locMessage(&locSystem->getCurrentEstimate());
+    portals::Message<messages::RobotLocation> locMessage(&locSystem->
+                                                         getCurrentEstimate());
+
+    // If Logging Loc or are offline AND using a PF, fill the particle out portal appropriatly
+    ParticleFilter* pf = dynamic_cast<ParticleFilter*>(locSystem);
+    if (pf != 0) {
+#if defined(LOG_LOCALIZATION) || defined(OFFLINE)
+        portals::Message<messages::ParticleSwarm> swarmMessage(&pf->getCurrentSwarm());
+        particleOutput.setMessage(swarmMessage);
+#endif
+    }
 
     output.setMessage(locMessage);
 }
