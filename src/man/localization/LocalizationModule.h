@@ -2,7 +2,7 @@
  * @brief  The localization module class. Takes input from motion and vision for
  *             calculations, also an inPortal for resetting. Uses a LocSystem for
  *             processing data, to change a Localization System used, alter the
- *             allocation in the constructor
+ *             allocation in the constructor. Or inherit from the Module
  *
  * @author EJ Googins <egoogins@bowdoin.edu>
  * @date   February 2013
@@ -13,9 +13,10 @@
 #include "RoboGrams.h"
 #include "VisionField.pb.h"
 #include "RobotLocation.pb.h"
-#include "ParticleSwarm.pb.h"
 #include "GameState.pb.h"
 #include "BallModel.pb.h"
+
+#include "ParticleSwarm.pb.h"
 
 /** Filter Headers **/
 #include "LocSystem.h"
@@ -41,7 +42,9 @@ public:
 
     /** Out Portals **/
     portals::OutPortal<messages::RobotLocation> output;
+
     portals::OutPortal<messages::ParticleSwarm> particleOutput;
+
 
     float lastMotionTimestamp;
     float lastVisionTimestamp;
@@ -65,9 +68,6 @@ private:
 
     // Record the last time the localization was reset
     long long lastReset;
-
-    // Store the current odometry to calculate changes between frames
-    messages::RobotLocation curOdometry;
 };
 
 } // namespace localization

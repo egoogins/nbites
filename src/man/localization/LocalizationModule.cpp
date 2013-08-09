@@ -15,6 +15,7 @@ LocalizationModule::LocalizationModule()
 {
     locSystem = new ParticleFilter();
     // Chooose on the field looking up as a random initial
+    // NOTE: Behaviors resets localization appropriately, this is just a safety net
     locSystem->resetLocTo(110,658,-1.5);
 }
 
@@ -26,7 +27,7 @@ LocalizationModule::~LocalizationModule()
 void LocalizationModule::update()
 {
 #ifndef OFFLINE
-    // Modify based on control portal
+    // Update the estimate based on reset portal
     if (lastReset != resetInput.message().timestamp())
     {
         lastReset = resetInput.message().timestamp();
@@ -34,30 +35,21 @@ void LocalizationModule::update()
                                    resetInput.message().y(),
                                    resetInput.message().h());
     }
-#endif
 
-    curOdometry.set_x(motionInput.message().x());
-    curOdometry.set_y(motionInput.message().y());
-    curOdometry.set_h(motionInput.message().h());
-
-#ifndef OFFLINE
+    // Determine if we're in set (should use ball observations)
     bool inSet = (STATE_SET == gameStateInput.message().state());
+
     // Update the Particle Filter with the new observations/odometry
-
+    // Use ball information if !OFFLINE & in set
+    // Don't use ball information if we're offline or not in set
     if (inSet)
-        locSystem->update(curOdometry, visionInput.message(), ballInput.message());
+        locSystem->update(motionInput.message(), visionInput.message(), ballInput.message());
     else
-#endif
-        locSystem->update(curOdometry, visionInput.message());
+#endif // OFFLINE
+        locSystem->update(motionInput.message(), visionInput.message());
 
-    // Update the locMessage and the swarm (if logging)
-    portals::Message<messages::RobotLocation> locMessage(&locSystem->
-                                                         getCurrentEstimate());
-#if defined( LOG_LOCALIZATION) || defined(OFFLINE)
-    portals::Message<messages::ParticleSwarm> swarmMessage(&locSystem->
-                                                           getCurrentSwarm());
-    particleOutput.setMessage(swarmMessage);
-#endif
+    // Update the locMessage
+    portals::Message<messages::RobotLocation> locMessage(&locSystem->getCurrentEstimate());
 
     output.setMessage(locMessage);
 }
@@ -69,6 +61,8 @@ void LocalizationModule::run_()
 
     motionInput.latch();
     visionInput.latch();
+
+    // Inputs that are only on the robot
 #ifndef OFFLINE
     gameStateInput.latch();
     ballInput.latch();
