@@ -8,8 +8,6 @@
  */
 #pragma once
 
-#include "SensorModel.h"
-#include "MotionModel.h"
 #include "Particle.h"
 #include "LocSystem.h"
 #include "FieldConstants.h"

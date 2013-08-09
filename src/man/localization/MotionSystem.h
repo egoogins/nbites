@@ -8,20 +8,16 @@
 
 #pragma once
 
-#include "MotionModel.h"
-#include <cmath>
-
+// Function Parameters
 #include "RobotLocation.pb.h"
+#include "Particle.h"
 
-namespace man
-{
-namespace localization
-{
+namespace man {
+namespace localization {
 
 class MotionSystem
 {
 public:
-    // add the coord and head range to the constructor!
     MotionSystem(float xAndYNoise_, float hNoise_);
     ~MotionSystem();
 

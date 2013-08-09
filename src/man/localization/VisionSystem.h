@@ -8,14 +8,15 @@
 
 #pragma once
 
-#include "SensorModel.h"
 #include "NBMath.h"
 #include "LineSystem.h"
 
 #include "BallModel.pb.h"
+#include "VisionField.pb.h"
 
 #include "LocStructs.h"
 #include "FieldConstants.h"
+#include "Particle.h"
 
 #include <vector>
 #include <list>
@@ -23,10 +24,8 @@
 
 #include <boost/math/distributions.hpp>
 
-namespace man
-{
-namespace localization
-{
+namespace man {
+namespace localization {
 
 static const float MIN_LINE_LENGTH = 100.f;
 
@@ -35,7 +34,7 @@ static const float MIN_LINE_LENGTH = 100.f;
  * @brief Responsible for updating particles based on Visual Observations
  *        from the vision system.
  */
-class VisionSystem// : public SensorModel
+class VisionSystem
 {
 public:
     VisionSystem();

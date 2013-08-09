@@ -10,8 +10,6 @@ project(localization)
 set(LOCALIZATION_SRCS LocalizationModule
                       ParticleFilter
 		      Particle
-		      MotionModel
-		      SensorModel
 #		      FakeLocInputModule
 		      VisionSystem
 		      MotionSystem
