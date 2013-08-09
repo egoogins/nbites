@@ -2,7 +2,8 @@
  * @brief  The localization module class. Takes input from motion and vision for
  *             calculations, also an inPortal for resetting. Uses a LocSystem for
  *             processing data, to change a Localization System used, alter the
- *             allocation in the constructor. Or inherit from the Module
+ *             allocation in the constructor. Anything specific to a type of LocSystem should
+ *             be checked for with a dynamic cast
  *
  * @author EJ Googins <egoogins@bowdoin.edu>
  * @date   February 2013
@@ -15,8 +16,7 @@
 #include "RobotLocation.pb.h"
 #include "GameState.pb.h"
 #include "BallModel.pb.h"
-
-#include "ParticleSwarm.pb.h"
+#include "ParticleSwarm.pb.h" // specific to Particle Filter
 
 /** Filter Headers **/
 #include "LocSystem.h"
@@ -42,9 +42,7 @@ public:
 
     /** Out Portals **/
     portals::OutPortal<messages::RobotLocation> output;
-
-    // NOTE: specific to type of LocSystem being used
-    portals::OutPortal<messages::ParticleSwarm> particleOutput;
+    portals::OutPortal<messages::ParticleSwarm> particleOutput; // Specific to PF
 
     float lastMotionTimestamp;
     float lastVisionTimestamp;
