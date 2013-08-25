@@ -31,10 +31,10 @@ public:
 
     // Update the estimate with current world observations
     virtual void update(const messages::RobotLocation& motionInput,
-                                      const messages::VisionField& visionInput) = 0;
+                        const messages::VisionField& visionInput) = 0;
     virtual void update(const messages::RobotLocation& motionInput,
-                                      const messages::VisionField& visionInput,
-                                      const messages::FilteredBall& ballInput) = 0;
+                        const messages::VisionField& visionInput,
+                        const messages::FilteredBall& ballInput) = 0;
 
     // Should reset the estimate to a specific pose, also flipping the pose
     // if the x,y,h are negative

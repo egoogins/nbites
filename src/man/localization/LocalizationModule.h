@@ -5,7 +5,7 @@
  *             allocation in the constructor. Anything specific to a type of LocSystem should
  *             be checked for with a dynamic cast
  *
- * @author EJ Googins <egoogins@bowdoin.edu>
+ * @author EJ Googins <egoogins@gmail.com>
  * @date   February 2013
  */
 #pragma once
