@@ -44,9 +44,6 @@ public:
     portals::OutPortal<messages::RobotLocation> output;
     portals::OutPortal<messages::ParticleSwarm> particleOutput; // Specific to PF
 
-    float lastMotionTimestamp;
-    float lastVisionTimestamp;
-
 protected:
     /**
      * @brief Update inputs, calculate new state of the filter

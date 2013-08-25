@@ -85,15 +85,12 @@ void ParticleFilter::update(const messages::RobotLocation& odometryInput,
     else
         errorMagnitude+= (1.f/100.f);
 
-    // std::cout << "Cur Error " << avgErr << std::endl;
-    // std::cout << "Filtered Error:  " << errorMagnitude << std::endl;
-
     // Determine if lost in frame or general
     lost = (errorMagnitude > LOST_THRESHOLD);
     badFrame = (avgErr > LOST_THRESHOLD);
 
     // Update filters estimate
-    updateEstimate();
+    updateEstimateAveragingParticles();
 }
 
 void ParticleFilter::update(const messages::RobotLocation& odometryInput,
@@ -116,7 +113,6 @@ void ParticleFilter::update(const messages::RobotLocation& odometryInput,
     }
 
    if(setResetTransition > 5){
-        std::cout << "LOST IN SET!" << std::endl;
         setResetTransition = 0;
         resetLocToSide(true);
     }
@@ -129,8 +125,7 @@ void ParticleFilter::update(const messages::RobotLocation& odometryInput,
 
     float avgErr = -1;
     // Resample if vision update
-    if(updatedVision)
-    {
+    if(updatedVision) {
         resample();
         updatedVision = false;
 
@@ -151,14 +146,14 @@ void ParticleFilter::update(const messages::RobotLocation& odometryInput,
     badFrame = (avgErr > LOST_THRESHOLD);
 
     // Update filters estimate
-    updateEstimate();
+    updateEstimateAveragingParticles();
 }
 
 /**
  *@brief  Updates the filters estimate of the robots position
  *        by averaging all particles
  */
-void ParticleFilter::updateEstimate()
+void ParticleFilter::updateEstimateAveragingParticles()
 {
     float sumX = 0;
     float sumY = 0;
@@ -181,74 +176,6 @@ void ParticleFilter::updateEstimate()
     poseEstimate.set_h(NBMath::subPIAngle(sumH/parameters.numParticles));
 
     poseEstimate.set_uncert(errorMagnitude);
-}
-
-/**
- * @brief  Return the particle which best predicted
- *         the most recent observations
- */
-Particle ParticleFilter::getBestParticle()
-{
-    // Sort the particles in ascending order.
-    std::sort(particles.begin(), particles.end());
-
-    // The last particle should have the greatest weight.
-    return particles[particles.size()-1];
-}
-
-float ParticleFilter::getMagnitudeError()
-{
-    // Idea: no need to think about different SD's for x, y, h since
-    //       that's not how we evaluate particles
-    //       Instead return the filtered value of avg error per obsv
-
-    // Think of as a circle with radius errorMagnitude that grows and
-    // shrinks as the filter gets better and worse observations
-    return errorMagnitude;
-}
-
-/*
- * @brief The following are all of the resetLoc functions
- */
-void ParticleFilter::resetLoc()
-{
-    framesSinceReset = 0;
-#ifdef DEBUG_LOC
-    std::cout << "WTF: LOC IS RESETTING!" << std::endl;
-#endif
-    // Clear the existing particles.
-    particles.clear();
-
-    boost::mt19937 rng;
-    rng.seed(std::time(0));
-
-    boost::uniform_real<float> xBounds(0.0f,
-                                       (float) parameters.fieldWidth);
-    boost::uniform_real<float> yBounds(0.0f,
-                                       (float) parameters.fieldHeight);
-    boost::uniform_real<float> angleBounds(0,
-                                           2.0f*boost::math::constants::pi<float>());
-
-    boost::variate_generator<boost::mt19937&,
-                             boost::uniform_real<float> > xGen(rng, xBounds);
-    boost::variate_generator<boost::mt19937&,
-                             boost::uniform_real<float> > yGen(rng, yBounds);
-    boost::variate_generator<boost::mt19937&,
-                             boost::uniform_real<float> > angleGen(rng, angleBounds);
-
-    // Assign uniform weight.
-    float weight = 1.0f/(((float)parameters.numParticles)*1.0f);
-
-    for(int i = 0; i < parameters.numParticles; ++i)
-    {
-        messages::RobotLocation randomLocation;
-        randomLocation.set_x(xGen());
-        randomLocation.set_y(yGen());
-        randomLocation.set_h(angleGen());
-        Particle p(randomLocation, weight);
-
-        particles.push_back(p);
-    }
 }
 
 void ParticleFilter::resetLocTo(float x, float y, float h,
@@ -289,64 +216,6 @@ void ParticleFilter::resetLocTo(float x, float y, float h,
     }
 
 }
-
-/**
- * Overloaded resetLocTo, resets Loc to 2 possible Locations
- *
- * @param x The first Locations x-coordinate.
- * @param y The first Locations y-coordinate.
- * @param h The first Locations heading (radians).
- * @param x_ The second Locations x-coordinate.
- * @param y_ The second Locations y-coordinate.
- * @param h_ The second Locations heading (radians).
- * @param params1 The parameters specifying how the particles will
- * be normally sampled about the mean (x, y, h).
- * @param params2 The parameters specifying how the particles will
- * be normally sampled about the mean (x_, y_, h_).
- */
-void ParticleFilter::resetLocTo(float x, float y, float h,
-                                float x_, float y_, float h_,
-                                LocNormalParams params1,
-                                LocNormalParams params2)
-{
-    framesSinceReset = 0;
-#ifdef DEBUG_LOC
-    std::cout << "WTF: LOC IS RESETTING to two locations!" << std::endl;
-#endif
-
-    // Reset the estimates.
-    poseEstimate.set_x(x);
-    poseEstimate.set_y(y);
-    poseEstimate.set_h(NBMath::subPIAngle(h));
-
-    particles.clear();
-    float weight = 1.0f/parameters.numParticles;
-
-    for(int i = 0; i < (parameters.numParticles / 2); ++i)
-    {
-        // Get the new particles x,y, and h
-        float pX = sampleNormal(x, params1.sigma_x);
-        float pY = sampleNormal(y, params1.sigma_y);
-        float pH = sampleNormal(h, params1.sigma_h);
-
-        Particle p(pX, pY, pH, weight);
-
-        particles.push_back(p);
-    }
-
-    for(int i = 0; i < ((parameters.numParticles + 1) / 2); ++i)
-    {
-        // Get the new particles x,y, and h
-        float pX = sampleNormal(x_, params2.sigma_x);
-        float pY = sampleNormal(y_, params2.sigma_y);
-        float pH = sampleNormal(h_, params2.sigma_h);
-
-        Particle p(pX, pY, pH, weight);
-
-        particles.push_back(p);
-    }
-}
-
 
 void ParticleFilter::resetLocToSide(bool blueSide)
 {
@@ -437,8 +306,6 @@ void ParticleFilter::resample()
             // If the reconstructions is on the same side and not near midfield
             if ( ((*recLocIt).defSide == onDefendingSide())
                  && (fabs((*recLocIt).x - CENTER_FIELD_X) > 50)) {
-//                std::cout << "Use reconstruction " << (*recLocIt).x << " " << (*recLocIt).y << std::endl;
-
                      Particle reconstructedParticle((*recLocIt).x,
                                                     (*recLocIt).y,
                                                     (*recLocIt).h,

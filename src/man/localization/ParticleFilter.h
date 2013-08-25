@@ -29,10 +29,8 @@
 #include <boost/random/uniform_real.hpp>
 #include <boost/math/constants/constants.hpp>
 
-namespace man
-{
-namespace localization
-{
+namespace man {
+namespace localization {
 
 const float LOST_THRESHOLD  = 10.f;
 const float ALPHA = .07f; // Impact for ~76 frames
@@ -43,8 +41,6 @@ static const ParticleFilterParams DEFAULT_PARAMS =
     FIELD_GREEN_HEIGHT,         // Field Height
     FIELD_GREEN_WIDTH,          // Field Width
     300,                        // Num Particles
-    0.2f,                       // Exponential Filter alpha
-    0.05f,                      //                    beta
     .1f,                        // Variance in x-y odometry
     .04f                         // Variance in h odometry
 };
@@ -67,14 +63,12 @@ public:
      *  @brief Given a new motion and vision input, update the filter
      */
     void update(const messages::RobotLocation& motionInput,
-                          const messages::VisionField&   visionInput);
+                const messages::VisionField&   visionInput);
 
     // Overload to use ball info
     void update(const messages::RobotLocation& motionInput,
-                          const messages::VisionField&   visionInput,
-                          const messages::FilteredBall&    ballInput);
-
-    float getMagnitudeError();
+                const messages::VisionField&   visionInput,
+                const messages::FilteredBall&    ballInput);
 
     void resetLocalization();
 
@@ -91,35 +85,16 @@ public:
 
     ParticleSet getParticles() { return particles; }
 
-    /**
-     * @brief Returns the particle with the highest weight in the set
-     *        (i.e., the "best" particle.)
-     */
-    Particle getBestParticle();
-
     bool onDefendingSide() const {return (poseEstimate.x() < CENTER_FIELD_X);};
     bool nearMidField() const {return (fabs(poseEstimate.x() - CENTER_FIELD_X) < 50);};
 
     /** Reset Functions **/
 
     /*
-     * @Brief - Reset the system by spreading through environment
-     */
-    void resetLoc();
-
-    /*
      * @Brief - Reset the system by injecting particles around given pose
      */
     void resetLocTo(float x, float y, float h,
                     LocNormalParams params = LocNormalParams());
-
-    /*
-     * @Brief - Reset the system by injecting particles around two given pose
-     */
-    void resetLocTo(float x, float y, float h,
-                    float x_, float y_, float h_,
-                    LocNormalParams params1 = LocNormalParams(),
-                    LocNormalParams params2 = LocNormalParams());
 
     /*
      * @Brief - Reset the system by injecting particles throughout one side
@@ -141,7 +116,7 @@ private:
     /**
      * @brief - Update the poseEstimate by avging all particles
      */
-    void updateEstimate();
+    void updateEstimateAveragingParticles();
 
     /**
      * @brief - Return symmetric location from given one
@@ -157,9 +132,6 @@ private:
     MotionSystem * motionSystem;
     VisionSystem * visionSystem;
 
-    float lastMotionTimestamp;
-    float lastVisionTimestamp;
-
     bool updatedVision;
 
     bool lost;
@@ -171,7 +143,6 @@ private:
 
     // For use when logging particle swarm
     messages::ParticleSwarm swarm;
-
-    };
+};
 } // namespace localization
 } // namespace man

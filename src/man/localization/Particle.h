@@ -11,10 +11,9 @@
 #include <iostream>
 #include "RobotLocation.pb.h"
 
-namespace man
-{
-namespace localization
-{
+namespace man {
+namespace localization {
+
 /**
  * @class Particle
  * @brief Defines a localization particle with a weight
@@ -83,15 +82,6 @@ public:
 
             return (w1 < w2) ? true : false;
         }
-
-    // friend std::ostream& operator<<(std::ostream& out,
-    //                                 Particle p)
-    // {
-    //     //out << "Particle with weight " << p.getWeight() << " with "
-    //     // << p.getLocation().DebugString() << std::endl;
-    //     out << "Particle x:\n"; << p.getLocation().x() << "\n";
-    //     return out;
-    // }
 
 private:
     float weight;                           //! The particle weight.

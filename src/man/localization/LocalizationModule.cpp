@@ -15,7 +15,7 @@ LocalizationModule::LocalizationModule()
 {
     locSystem = new ParticleFilter();
     // Chooose on the field looking up as a random initial
-    // NOTE: Behaviors resets localization appropriately, this is just a safety net
+    // NOTE: Behaviors resets localization appropriately
     locSystem->resetLocTo(110,658,-1.5);
 }
 
@@ -52,7 +52,8 @@ void LocalizationModule::update()
     portals::Message<messages::RobotLocation> locMessage(&locSystem->
                                                          getCurrentEstimate());
 
-    // If Logging Loc or are offline AND using a PF, fill the particle out portal appropriatly
+    // If Logging Loc or are offline AND using a PF
+    // fill the particle out portal appropriatly
     ParticleFilter* pf = dynamic_cast<ParticleFilter*>(locSystem);
     if (pf != 0) {
 #if defined(LOG_LOCALIZATION) || defined(OFFLINE)
