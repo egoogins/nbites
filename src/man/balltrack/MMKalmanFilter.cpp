@@ -138,6 +138,13 @@ void MMKalmanFilter::update(messages::VisionBall    visionBall,
         curEntry = 0;
     }
 
+    // Choose the filter whose covariance has the highest probability at their estimate
+    float highestProbability = 0;
+    for (std::vector<KalmanFilter *>::iterator it = filters.begin(); it != filters.end(); it++) {
+        // Evaluate 2D PDF
+        float prob_at_mean = 1 / (2 * PI * std::sqrt(*it->getDetOfCov()));
+        if (prob_at_mean > highestProbability) {
+            bestFilter = it;
     // Determine filter
     if(TRACK_MOVEMENT) {
         float movingScore = filters.at((unsigned)1)->getScore();

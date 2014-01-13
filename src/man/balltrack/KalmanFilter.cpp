@@ -26,6 +26,10 @@ KalmanFilter::~KalmanFilter() {
     delete correctionMagBuffer;
 }
 
+float getDetOfCov() {
+    return cov(0,0) * cov(1,1) - cov(0,1) * cov(1,0);
+}
+
 void KalmanFilter::updateDeltaTime()
 {
     // Get time since last update
