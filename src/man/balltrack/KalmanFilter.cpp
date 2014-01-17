@@ -26,8 +26,10 @@ KalmanFilter::~KalmanFilter() {
     delete correctionMagBuffer;
 }
 
-float getDetOfCov() {
-    return cov(0,0) * cov(1,1) - cov(0,1) * cov(1,0);
+// Evaluate 2D PDF
+float KalmanFilter::getProbAtMean() {
+    float detOfCov = cov(0,0) * cov(1,1) - cov(0,1) * cov(1,0);
+    return 1 / (2 * PI * std::sqrt(detOfCov));
 }
 
 void KalmanFilter::updateDeltaTime()

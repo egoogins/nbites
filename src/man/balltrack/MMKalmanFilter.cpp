@@ -1,7 +1,7 @@
 #include "MMKalmanFilter.h"
 
-namespace man{
-namespace balltrack{
+namespace man {
+namespace balltrack {
 
 /**
  * @ Brief- Constructor of my 'Puppetmaster'
@@ -92,38 +92,39 @@ void MMKalmanFilter::update(messages::VisionBall    visionBall,
             initialize(visRelX, visRelY, params.initCovX, params.initCovY);
         }
 
-        // else if (fullBuffer) {
-        //     // Calc velocity through these frames, if high reset moving filter
-        //     CartesianObservation vel = calcVelocityOfBuffer();
+        /*else if (fullBuffer) {
+            // Calc velocity through these frames
+            // Will reset worst stationary and worst moving filters
+            CartesianObservation vel = calcVelocityOfBuffer();
 
-        //     float speedThroughFrames = calcSpeed(vel.relX, vel.relY);
+            float speedThroughFrames = calcSpeed(vel.relX, vel.relY);
 
-        //     // Calc diff between observation and estimata
-        //     float estDiff = calcSpeed(visRelX - filters.at((unsigned)0)->getRelXPosEst(),
-        //                               visRelY - filters.at((unsigned)0)->getRelYPosEst());
+            // Calc diff between observation and estimata
+            float estDiff = calcSpeed(visRelX - filters.at((unsigned)0)->getRelXPosEst(),
+                                      visRelY - filters.at((unsigned)0)->getRelYPosEst());
 
-        //     // Much higher than our current estimate
-        //     // if ((speedThroughFrames > filters.at((unsigned)1)->getSpeed() + 60.f)
-        //     //     && (estDiff > params.badStationaryThresh))
-        //     //if(estDiff > params.badStationaryThresh)
+            // Much higher than our current estimate
+            // if ((speedThroughFrames > filters.at((unsigned)1)->getSpeed() + 60.f)
+            //     && (estDiff > params.badStationaryThresh))
+            //if(estDiff > params.badStationaryThresh)
 
-        //     // If moving velocity <10, give this a try
-        //     if (std::abs(filters.at((unsigned)1)->getSpeed()) < 10.f
-        //         && speedThroughFrames > 10.f)
-        //     {
-        //         //std::cout << "\nBall Kicked!" << std::endl;
-        //         ufvector4 newMovingX = filters.at((unsigned)0)->getStateEst();
-        //         newMovingX(2) = vel.relX;
-        //         newMovingX(3) = vel.relY;
-        //         ufmatrix4 newMovingCov = boost::numeric::ublas::identity_matrix <float>(4);
-        //         newMovingCov(0,0) = 10.f;
-        //         newMovingCov(1,1) = 10.f;
-        //         newMovingCov(2,2) = 20.f;
-        //         newMovingCov(3,3) = 20.f;
+            // If moving velocity <10, give this a try
+            if (std::abs(filters.at((unsigned)1)->getSpeed()) < 10.f
+                && speedThroughFrames > 10.f)
+            {
+                //std::cout << "\nBall Kicked!" << std::endl;
+                ufvector4 newMovingX = filters.at((unsigned)0)->getStateEst();
+                newMovingX(2) = vel.relX;
+                newMovingX(3) = vel.relY;
+                ufmatrix4 newMovingCov = boost::numeric::ublas::identity_matrix <float>(4);
+                newMovingCov(0,0) = 10.f;
+                newMovingCov(1,1) = 10.f;
+                newMovingCov(2,2) = 20.f;
+                newMovingCov(3,3) = 20.f;
 
-        //         filters.at((unsigned)1)->initialize(newMovingX, newMovingCov);
-        //     }
-        // }
+                filters.at((unsigned)1)->initialize(newMovingX, newMovingCov);
+            }
+        }*/
 
         // Now correct our filters with the vision observation
         updateWithVision(visionBall);
@@ -138,39 +139,68 @@ void MMKalmanFilter::update(messages::VisionBall    visionBall,
         curEntry = 0;
     }
 
+    /*
+    float stat_det = filters.at((unsigned)0)->getDetOfCov();
+    float mov_det = filters.at((unsigned)1)->getDetOfCov();
+    float stat_prob = 1 / (2 * PI * std::sqrt(stat_det));
+    float mov_prob = 1 / (2 * PI * std::sqrt(mov_det));
+
+    bestFilter = (stat_prob > mov_prob) ? 0 : 1; */
+
     // Choose the filter whose covariance has the highest probability at their estimate
     float highestProbability = 0;
+    KalmanFilter* worstStationaryFilter = 0;
+    KalmanFilter* worstMovingFilter = 0;
     for (std::vector<KalmanFilter *>::iterator it = filters.begin(); it != filters.end(); it++) {
-        // Evaluate 2D PDF
-        float prob_at_mean = 1 / (2 * PI * std::sqrt(*it->getDetOfCov()));
-        if (prob_at_mean > highestProbability) {
-            bestFilter = it;
-    // Determine filter
-    if(TRACK_MOVEMENT) {
-        float movingScore = filters.at((unsigned)1)->getScore();
-        float stationaryScore = filters.at((unsigned)0)->getScore();
-        if( (movingScore < stationaryScore))
-        { // consider the ball to be moving
-            bestFilter = 1;
+        // Determine best, and worst filters
+        if ((*it)->getProbAtMean() > highestProbability) {
+            bestFilter = *it;
         }
-        else {
-            bestFilter = 0;
+
+        // If can calculate estimate for recent velocity, re-init worst filters
+        if (fullBuffer) {
+            if ((*it)->isStationary()) {
+                if (!worstStationaryFilter ||
+                        worstStationaryFilter->getProbAtMean() > (*it)->getProbAtMean()) {
+                    worstStationaryFilter = *it;
+                }
+            } else { // is moving
+                if (!worstMovingFilter ||
+                        worstMovingFilter->getProbAtMean() > (*it)->getProbAtMean()) {
+                    worstMovingFilter = *it;
+                }
+            }
         }
-    }
-    else {
-        bestFilter = 0;
     }
 
     // Now update our estimates before housekeeping
     prevStateEst = stateEst;
     prevCovEst   = covEst;
 
-    stateEst = filters.at((unsigned)bestFilter)->getStateEst();
-    covEst   = filters.at((unsigned)bestFilter)->getCovEst();
+    stateEst = bestFilter->getStateEst();
+    covEst   = bestFilter->getCovEst();
 
     // Housekeep
     framesWithoutBall = (visionBall.on()) ? (0) : (framesWithoutBall+1);
-    stationary = filters.at((unsigned)bestFilter)->isStationary();
+    stationary = bestFilter->isStationary();
+
+    // Re init worst filters
+    if (worstStationaryFilter && worstMovingFilter) {
+        // High uncertainty to start
+        ufmatrix4 poorCov = boost::numeric::ublas::zero_matrix<float>(4);
+        poorCov(0,0) = 30.f;
+        poorCov(1,1) = 30.f;
+        poorCov(2,2) = 30.f;
+        poorCov(3,3) = 30.f;
+
+        ufvector4 stationaryX = NBMath::vector4D(visRelX, visRelY, 0, 0);
+        CartesianObservation vel = calcVelocityOfBuffer();
+        ufvector4 movingX = NBMath::vector4D(visRelX, visRelY, vel.relX, vel.relY);
+
+        worstStationaryFilter->initialize(stationaryX, poorCov);
+        worstMovingFilter->initialize(movingX, poorCov);
+    }
+
 }
 
 /**
@@ -278,7 +308,7 @@ void MMKalmanFilter::initialize(float relX, float relY, float covX, float covY)
     boost::uniform_real<float> posCovRange(-2.f, 2.f);
     boost::variate_generator<boost::mt19937&,
                              boost::uniform_real<float> > positionGen(rng, posCovRange);
-    boost::uniform_real<float> randVelRange(-5.f, 5.f);
+    boost::uniform_real<float> randVelRange(-30.f, 30.f);
     boost::variate_generator<boost::mt19937&,
                              boost::uniform_real<float> > velocityGen(rng, randVelRange);
 
@@ -306,14 +336,14 @@ void MMKalmanFilter::initialize(float relX, float relY, float covX, float covY)
     // make moving
     for (int i=0; i<params.numFilters/2; i++)
     {
-        // Needs to be stationary, have given mean, and add noise
+        // Needs to be moving, have given mean, and add noise
         //   to the covariance matrix
         KalmanFilter *movingFilter = new KalmanFilter(false);
         ufvector4 x = boost::numeric::ublas::zero_vector<float>(4);
         x(0)= relX;
         x(1)= relY;
-        x(2) = 0.f;
-        x(3) = 0.f;
+        x(2) = velocityGen();
+        x(3) = velocityGen();
 
         // Choose to assum obsv mean is perfect and just have noisy velocity
         ufmatrix4 cov = boost::numeric::ublas::zero_matrix<float>(4);
@@ -447,5 +477,5 @@ float MMKalmanFilter::calcSpeed(float a, float b)
     return std::sqrt(a*a + b*b);
 }
 
-}
-}
+} // namespace balltrack
+} // namespace man

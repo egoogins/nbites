@@ -99,7 +99,7 @@ public:
     float getCovYPosEst(){return cov(1,1);};
     float getCovXVelEst(){return cov(2,2);};
     float getCovYVelEst(){return cov(3,3);};
-    float getDetOfCov();
+    float getProbAtMean();
 
     float getFilteredDist(){return filteredDist;};
     float getFilteredBear(){return filteredBear;};

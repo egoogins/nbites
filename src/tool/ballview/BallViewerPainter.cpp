@@ -67,7 +67,7 @@ void BallViewerPainter::paintBalls(QPaintEvent* event)
     }
 
     if (paintOffline) {
-        if(offStationary) {
+        if(offlineIsStationary) {
             painter.setPen(Qt::blue);
             painter.setBrush(Qt::blue);
             painter.drawEllipse(offCurGlobalMoving, 6, 6);
@@ -142,7 +142,7 @@ void BallViewerPainter::updateOfflineFilteredBall(messages::FilteredBall ball)
     // Paint the moving and stationary filters
     offCurGlobalStationary = getGlobalPoint(ball.stat_distance(), ball.stat_bearing());
     offCurGlobalMoving = getGlobalPoint(ball.mov_distance(), ball.mov_bearing());
-    offStationary = ball.is_stationary();
+    offlineIsStationary = ball.is_stationary();
     if(ball.vis().on())
         offCurGlobalVision   = getGlobalPoint(ball.vis().distance(), ball.vis().bearing());
     else

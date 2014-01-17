@@ -57,7 +57,7 @@ private:
     QPoint curGlobalMoving;
     QPoint curGlobalVision;
 
-    bool offStationary;
+    bool offlineIsStationary;
     QPoint offCurGlobalStationary;
     QPoint offCurGlobalMoving;
     QPoint offCurGlobalVision;

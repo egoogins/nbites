@@ -73,8 +73,8 @@ public:
     float getCovXVelEst(){return covEst(2,2);};
     float getCovYVelEst(){return covEst(3,3);};
 
-    float getFilteredDist(){return filters.at((unsigned)bestFilter)->getFilteredDist();};
-    float getFilteredBear(){return filters.at((unsigned)bestFilter)->getFilteredBear();};
+    float getFilteredDist(){return bestFilter->getFilteredDist();};
+    float getFilteredBear(){return bestFilter->getFilteredBear();};
 
     float getSpeed(){return filters.at((unsigned)1)->getSpeed();};
     float getRelXDest(){return filters.at((unsigned)1)->getRelXDest();};
@@ -94,7 +94,7 @@ public:
     float getMovingBearing() {return filters.at((unsigned) 1)->getFilteredBear();};
     float getMovingSpeed() {return calcSpeed(getMovingVelX(), getMovingVelY());};
 
-    bool isStationary(){return stationary;};
+    bool isStationary(){bestFilter->isStationary();}
 
     void printBothFilters();
 
@@ -142,7 +142,7 @@ private:
     int curEntry;
     bool fullBuffer;
 
-    int bestFilter;
+    KalmanFilter* bestFilter;
 
     bool stationary;
     bool consecutiveObservation;
