@@ -20,8 +20,8 @@
 
 using namespace NBMath;
 
-namespace man{
-namespace balltrack{
+namespace man {
+namespace balltrack {
 
 static const int BUFF_LENGTH = 10;
 
@@ -35,26 +35,25 @@ static const KalmanFilterParams DEFAULT_PARAMS =
     .5f,             // rotationDeviation CALC March 2013
     10.f,            // obsvRelX deviation
     10.f,            // obsvRelY deviation
-    .1f,                    // processDeviation
+    .1f,             // processDeviation
     .1f,
     .1f,
     .1f,
-    -20.f                     // ballFriction?
+    -20.f            // ballFriction?
 };
 
 class KalmanFilter
 {
-
 public:
     KalmanFilter(bool stationary_ = true,
                  KalmanFilterParams params_ = DEFAULT_PARAMS);
     ~KalmanFilter();
 
-    void update(messages::VisionBall visionBall,
-                messages::RobotLocation     motion);
+    void update(messages::VisionBall    visionBall,
+                messages::RobotLocation motion);
 
-    bool isUpdated() {return updated;};
-    void setUpdate(bool updated_){updated = updated_;};
+    bool isUpdated() { return m_updated; }
+    void setUpdate(bool updated_) { m_updated = updated_; }
 
     void initialize();
     void initialize(ufvector4 x_, ufmatrix4 cov_);
@@ -88,87 +87,87 @@ public:
 
 
 
-    ufvector4 getStateEst(){return x;};
-    float getRelXPosEst(){return x(0);};
-    float getRelYPosEst(){return x(1);};
-    float getRelXVelEst(){return x(2);};
-    float getRelYVelEst(){return x(3);};
+    ufvector4 getStateEst() { return m_x; }
+    float getRelXPosEst() { return m_x(0); }
+    float getRelYPosEst() { return m_x(1); }
+    float getRelXVelEst() { return m_x(2); }
+    float getRelYVelEst() { return m_x(3); }
 
-    ufmatrix4 getCovEst(){return cov;};
-    float getCovXPosEst(){return cov(0,0);};
-    float getCovYPosEst(){return cov(1,1);};
-    float getCovXVelEst(){return cov(2,2);};
-    float getCovYVelEst(){return cov(3,3);};
+    ufmatrix4 getCovEst() { return m_cov; }
+    float getCovXPosEst() { return m_cov(0,0); }
+    float getCovYPosEst() { return m_cov(1,1); }
+    float getCovXVelEst() { return m_cov(2,2); }
+    float getCovYVelEst() { return m_cov(3,3); }
     float getProbAtMean();
 
-    float getFilteredDist(){return filteredDist;};
-    float getFilteredBear(){return filteredBear;};
+    float getFilteredDist() { return m_filtered_dist; }
+    float getFilteredBear() { return m_filtered_bear; }
 
-    float getRelXDest(){return relXDest;};
-    float getRelYDest(){return relYDest;};
-    float getRelYIntersectDest(){return relYIntersectDest;};
+    float getRelXDest() { return m_rel_x_dest; }
+    float getRelYDest() { return m_rel_y_dest; }
+    float getRelYIntersectDest() { return m_rel_y_intersect_dest; }
 
-    bool isStationary(){return stationary;};
+    bool isStationary() { return m_stationary; }
 
-    float getSpeed(){return std::sqrt(x(2)*x(2) + x(3)*x(3));};
+    float getSpeed() { return std::sqrt(m_x(2)*m_x(2) + m_x(3)*m_x(3)); }
 
     void printEst(){std::cout << "Filter Estimate:\n\t"
-                              << "'Stationary' is\t" << stationary << "\n\t"
-                              << "X-Pos:\t" << x(0) << "Y-Pos:\t" << x(1)
+                              << "'Stationary' is\t" << m_stationary << "\n\t"
+                              << "X-Pos:\t" << m_x(0) << "Y-Pos:\t" << m_x(1)
                               << "\n\t"
-                              << "x-Vel:\t" << x(2) << "y-Vel:\t" << x(3)
+                              << "x-Vel:\t" << m_x(2) << "y-Vel:\t" << m_x(3)
                               << "\n\t"
-                              << "Uncertainty x:\t" << cov(0,0) << "\t,\t"
-                              << "y:\t" << cov(1,1) << std::endl;};
+                              << "Uncertainty x:\t" << m_cov(0,0) << "\t,\t"
+                              << "y:\t" << m_cov(1,1) << std::endl; }
 
-    float getScore(){return score;};
+    float getScore() { return m_score; }
 
-private:
-    KalmanFilterParams params;
+protected:
+    KalmanFilterParams m_params;
 
-    bool updated;
+    bool m_updated;
 
     void updateDeltaTime();
 
     // x is the state estimate, it holds relX & relY position and
     //                                   relX & relY velocity
     // This is the convention for all matrices and vectors
-    ufvector4 x;
+    ufvector4 m_x;
 
     // Covariance matrix for the state estimation
-    ufmatrix4 cov;
+    ufmatrix4 m_cov;
 
 
     // Last calculated kalman gain
-    float gain;
+    float m_gain;
 
     // Time passed since last vision observation
-    long long int lastUpdateTime;
-    float deltaTime;
+    long long int m_last_update_time;
+    float m_delta_time;
 
     // true if the filter assumes the ball is stationary, if stationary
     // is true, the velocitys should be zero
-    bool stationary;
+    bool m_stationary;
 
     //temp move to public for testing
 //    void predict(messages::RobotLocation odometry, float deltaT);
 
-    float filteredDist;
-    float filteredBear;
+    float m_filtered_dist;
+    float m_filtered_bear;
 
-    float relXDest;
-    float relYDest;
-    float relYIntersectDest;
+    float m_rel_x_dest;
+    float m_rel_y_dest;
+    float m_rel_y_intersect_dest;
 
     // For the MMKalman
-    float score;
-    float *correctionMagBuffer;
-    int curEntry;
-    float uncertainty;
+    float m_score;
+    float* m_correction_mag_buffer;
+    int m_cur_entry;
+    float m_uncertainty;
 
-    messages::RobotLocation lastOdometry;
+    messages::RobotLocation m_last_odometry;
 };
 
 
-} //namespace balltrack
-} //namespace man
+} // balltrack
+} // man

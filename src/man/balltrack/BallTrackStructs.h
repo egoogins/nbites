@@ -65,7 +65,5 @@ namespace balltrack
         float relY;
     };
 
-
-
 } // namespace balltrack
 } // namespace man

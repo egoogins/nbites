@@ -8,27 +8,27 @@ namespace balltrack {
 
 KalmanFilter::KalmanFilter(bool stationary_,
                            KalmanFilterParams params_)
-    :  params(params_),
-       updated(false),
-       lastUpdateTime(0),
-       deltaTime(0.03f),
-       relXDest(0.f),
-       relYDest(0.f)
+    :  m_params(params_),
+       m_updated(false),
+       m_last_update_time(0),
+       m_delta_time(0.03f),
+       m_rel_x_dest(0.f),
+       m_rel_y_dest(0.f)
 {
-    score = 0.f;
-    curEntry = 0.f;
-    correctionMagBuffer = new float[BUFF_LENGTH];
-    stationary = stationary_;
+    m_score = 0.f;
+    m_cur_entry = 0.f;
+    m_correction_mag_buffer = new float[BUFF_LENGTH];
+    m_stationary = stationary_;
     initialize();
 }
 
 KalmanFilter::~KalmanFilter() {
-    delete correctionMagBuffer;
+    delete m_correction_mag_buffer;
 }
 
 // Evaluate 2D PDF
 float KalmanFilter::getProbAtMean() {
-    float detOfCov = cov(0,0) * cov(1,1) - cov(0,1) * cov(1,0);
+    float detOfCov = m_cov(0,0) * m_cov(1,1) - m_cov(0,1) * m_cov(1,0);
     return 1 / (2 * PI * std::sqrt(detOfCov));
 }
 
@@ -36,23 +36,23 @@ void KalmanFilter::updateDeltaTime()
 {
     // Get time since last update
     const long long int time = monotonic_micro_time(); //from common
-    deltaTime = static_cast<float>(time - lastUpdateTime)/1000000.0f; // u_s to sec
+    m_delta_time = static_cast<float>(time - m_last_update_time)/1000000.0f; // u_s to sec
 
     // Guard against a zero dt (maybe possible?)
-    if (deltaTime <= 0.0){
-        deltaTime = 0.0001f;
+    if (m_delta_time <= 0.0){
+        m_delta_time = 0.0001f;
     }
 
-    if (deltaTime > 1)
-        deltaTime = .03f; // Guard against first frame issues
+    if (m_delta_time > 1)
+        m_delta_time = .03f; // Guard against first frame issues
 
-    lastUpdateTime = time;
+    m_last_update_time = time;
 }
 
 void KalmanFilter::update(messages::VisionBall visionBall,
                           messages::RobotLocation  motion)
 {
-    updated = true;
+    m_updated = true;
 
     //Get passed time
     updateDeltaTime();
@@ -66,17 +66,17 @@ void KalmanFilter::update(messages::VisionBall visionBall,
 void KalmanFilter::predict(messages::RobotLocation odometry)
 {
     // Overload for offline data simulation
-    predict(odometry, deltaTime);
+    predict(odometry, m_delta_time);
 }
 
 void KalmanFilter::predict(messages::RobotLocation odometry, float deltaT)
 {
-    float diffX = odometry.x() - lastOdometry.x();
-    lastOdometry.set_x(odometry.x());
-    float diffY = odometry.y() - lastOdometry.y();
-    lastOdometry.set_y(odometry.y());
-    float diffH = odometry.h() - lastOdometry.h();
-    lastOdometry.set_h(odometry.h());
+    float diffX = odometry.x() - m_last_odometry.x();
+    m_last_odometry.set_x(odometry.x());
+    float diffY = odometry.y() - m_last_odometry.y();
+    m_last_odometry.set_y(odometry.y());
+    float diffH = odometry.h() - m_last_odometry.h();
+    m_last_odometry.set_h(odometry.h());
 
     float sinh, cosh;
     sincosf(odometry.h(), &sinh, &cosh);
@@ -99,7 +99,7 @@ void KalmanFilter::predict(messages::RobotLocation odometry, float deltaT)
     sincosf(dH,&sinDeltaH, &cosDeltaH);
 
     // Keep track of the deviation
-    float rotationDeviation = dH * params.rotationDeviation;
+    float rotationDeviation = dH * m_params.rotationDeviation;
     float sinRotDev, cosRotDev;
     sincosf(rotationDeviation, &sinRotDev, &cosRotDev);
 
@@ -120,7 +120,7 @@ void KalmanFilter::predict(messages::RobotLocation odometry, float deltaT)
     rotationDeviationRotation(0,1) = sinRotDev;
     rotationDeviationRotation(1,1) = cosRotDev;
 
-    if (stationary){
+    if (m_stationary){
         rotation(2,2) = 0.f;
         rotation(3,3) = 0.f;
 
@@ -141,7 +141,7 @@ void KalmanFilter::predict(messages::RobotLocation odometry, float deltaT)
 
     // Calculate the trajectory
     ufmatrix4 trajectory = boost::numeric::ublas::identity_matrix <float>(4);
-    if (!stationary) { //if estimate is moving, predict to where using velocity
+    if (!m_stationary) { //if estimate is moving, predict to where using velocity
         trajectory(0,2) = deltaT;
         trajectory(1,3) = deltaT;
     }
@@ -152,10 +152,10 @@ void KalmanFilter::predict(messages::RobotLocation odometry, float deltaT)
     //       so no need to compute it or calculate anything with it
     ufvector4 translation = NBMath::vector4D(-dX, -dY, 0.f, 0.f);
     // And deviation
-    float xTransDev = dX * params.transXDeviation;
+    float xTransDev = dX * m_params.transXDeviation;
     xTransDev *= xTransDev;
 
-    float yTransDev = dY * params.transYDeviation;
+    float yTransDev = dY * m_params.transYDeviation;
     yTransDev *= yTransDev;
 
     ufvector4 translationDeviation = NBMath::vector4D(xTransDev,
@@ -170,15 +170,15 @@ void KalmanFilter::predict(messages::RobotLocation odometry, float deltaT)
 
     // Incorporate friction if the ball is moving
 
-    if (!stationary) // moving
+    if (!m_stationary) // moving
     {
-        float xVelFactor = (std::abs(x(2)) + params.ballFriction*deltaT)/std::abs(x(2));
-        float yVelFactor = (std::abs(x(3)) + params.ballFriction*deltaT)/std::abs(x(3));
+        float xVelFactor = (std::abs(m_x(2)) + m_params.ballFriction*deltaT)/std::abs(m_x(2));
+        float yVelFactor = (std::abs(m_x(3)) + m_params.ballFriction*deltaT)/std::abs(m_x(3));
 
         if( xVelFactor < 0.001f)
-            x(2) = .0001f;
+            m_x(2) = .0001f;
         if( yVelFactor < 0.001f)
-            x(3) = .0001f;
+            m_x(3) = .0001f;
 
         // Determine if ball is still moving
         float velMagnitude = getSpeed();
@@ -186,32 +186,32 @@ void KalmanFilter::predict(messages::RobotLocation odometry, float deltaT)
         if(velMagnitude > 2.f) // basically still moving
         {
             // vel = vel * (absVel + decel)/absVel
-            x(2) *= xVelFactor;
-            x(3) *= yVelFactor;
+            m_x(2) *= xVelFactor;
+            m_x(3) *= yVelFactor;
         }
     }
 
     // Calculate the expected state
     ufmatrix4 A = prod(rotation,trajectory);
     ufmatrix4 ATranspose = trans(A);
-    ufvector4 p = prod(A,x);
-    x = p + translation;
+    ufvector4 p = prod(A,m_x);
+    m_x = p + translation;
 
     // Calculate the covariance Cov = A*Cov*ATranspose
-    ufmatrix4 covTimesATranspose = prod(cov, ATranspose);
-    cov = prod(A, covTimesATranspose);
+    ufmatrix4 covTimesATranspose = prod(m_cov, ATranspose);
+    m_cov = prod(A, covTimesATranspose);
 
     // Add noise: Process noise, rotation dev, translation dev
     ufvector4 noise;
     noise = boost::numeric::ublas::zero_vector<float>(4);
 
     // Add process noise
-    noise(0) += params.processDeviationPosX;
-    noise(1) += params.processDeviationPosY;
+    noise(0) += m_params.processDeviationPosX;
+    noise(1) += m_params.processDeviationPosY;
 
-    if(!stationary){
-        noise(2) += params.processDeviationVelX;
-        noise(3) += params.processDeviationVelY;
+    if(!m_stationary){
+        noise(2) += m_params.processDeviationVelX;
+        noise(3) += m_params.processDeviationVelY;
     }
 
     // Add translation deviation noise
@@ -221,19 +221,19 @@ void KalmanFilter::predict(messages::RobotLocation odometry, float deltaT)
     // We've already made the matrix using the deviation matrix
     // so lets pump it through
     // #CRUDE_APPROXIMATION @b_human
-    ufvector4 noiseFromRot = prod(rotationDeviationRotation, x) - x;
+    ufvector4 noiseFromRot = prod(rotationDeviationRotation, m_x) - m_x;
 
     for (int i=0; i<4; i++)
         noise(i) += std::abs(noiseFromRot(i));
 
     // Add all this noise to the covariance
     for(int i=0; i<4; i++){
-        cov(i,i) += noise(i);
+        m_cov(i,i) += noise(i);
     }
 
     // Housekeep
-    filteredDist = std::sqrt(x(0)*x(0) + x(1)*x(1));
-    filteredBear = NBMath::safe_atan2(x(1),x(0));
+    m_filtered_dist = std::sqrt(m_x(0)*m_x(0) + m_x(1)*m_x(1));
+    m_filtered_bear = NBMath::safe_atan2(m_x(1),m_x(0));
 }
 
 void KalmanFilter::updateWithObservation(messages::VisionBall visionBall)
@@ -257,20 +257,20 @@ void KalmanFilter::updateWithObservation(messages::VisionBall visionBall)
     // Calculate the gain
     // Calc c*cov*c^t
     ufmatrix cCovCTranspose(2,2);
-    cCovCTranspose = prod(cov,cTranspose);
+    cCovCTranspose = prod(m_cov,cTranspose);
     cCovCTranspose = prod(c,cCovCTranspose);
 
-    cCovCTranspose(0,0) += params.obsvRelXVariance;
-    cCovCTranspose(1,1) += params.obsvRelYVariance;
+    cCovCTranspose(0,0) += m_params.obsvRelXVariance;
+    cCovCTranspose(1,1) += m_params.obsvRelYVariance;
 
     // gain = cov*c^t*(c*cov*c^t + var)^-1
     ufmatrix kalmanGain(2,2);
 
     kalmanGain = prod(cTranspose,NBMath::invert2by2(cCovCTranspose));
-    kalmanGain = prod(cov,kalmanGain);
+    kalmanGain = prod(m_cov,kalmanGain);
 
     ufvector posEstimates(2);
-    posEstimates = prod(c, x);
+    posEstimates = prod(c, m_x);
 
     // x straight ahead, y to the right
     float sinB,cosB;
@@ -285,26 +285,26 @@ void KalmanFilter::updateWithObservation(messages::VisionBall visionBall)
 
     ufvector correction(4);
     correction = prod(kalmanGain,innovation);
-    x += correction;
+    m_x += correction;
 
     //cov = cov - k*c*cov
     ufmatrix4 identity;
     identity = boost::numeric::ublas::identity_matrix <float>(4);
     ufmatrix4 modifyCov;
     modifyCov = identity - prod(kalmanGain,c);
-    cov = prod(modifyCov,cov);
+    m_cov = prod(modifyCov,m_cov);
 
     // Housekeep
-    filteredDist = std::sqrt(x(0)*x(0) + x(1)*x(1));
-    filteredBear = NBMath::safe_atan2(x(1),x(0));
+    m_filtered_dist = std::sqrt(m_x(0)*m_x(0) + m_x(1)*m_x(1));
+    m_filtered_bear = NBMath::safe_atan2(m_x(1),m_x(0));
 
     float curErr = std::sqrt(correction(0)*correction(0) + correction(1)*correction(1));
-    correctionMagBuffer[curEntry] = curErr;
+    m_correction_mag_buffer[m_cur_entry] = curErr;
 
-    score = 0.f;
+    m_score = 0.f;
     for(int i=0; i<BUFF_LENGTH; i++)
-        score+= correctionMagBuffer[i];
-    score = score/10; // avg correction over 10 frames
+        m_score+= m_correction_mag_buffer[i];
+    m_score = m_score/10; // avg correction over 10 frames
 
     //get magnitude of correction
     // std::cout << "Is moving filter " << isStationary() << std::endl;
@@ -313,48 +313,48 @@ void KalmanFilter::updateWithObservation(messages::VisionBall visionBall)
 
 void KalmanFilter::initialize()
 {
-    x = NBMath::vector4D(10.0f, 0.0f, 0.f, 0.f);
-    cov = boost::numeric::ublas::identity_matrix <float>(4);
+    m_x = NBMath::vector4D(10.0f, 0.0f, 0.f, 0.f);
+    m_cov = boost::numeric::ublas::identity_matrix <float>(4);
 }
 
 void KalmanFilter::initialize(ufvector4 x_,
                               ufmatrix4 cov_)
 {
     // references, not pointers so will copy values
-    x = x_;
-    cov = cov_;
+    m_x = x_;
+    m_cov = cov_;
 }
 
 
 void KalmanFilter::predictBallDest()
 {
-    if(stationary)
+    if(m_stationary)
     {
-        relXDest = x(0);
-        relYDest = x(1);
+        m_rel_x_dest = m_x(0);
+        m_rel_y_dest = m_x(1);
     }
     else // moving
     {
         float speed = getSpeed();
 
         //Calculate time until stop
-        float timeToStop = std::abs(speed / params.ballFriction);
+        float timeToStop = std::abs(speed / m_params.ballFriction);
 
         //Calculate deceleration in each direction
-        float decelX = (x(2)/speed) * params.ballFriction;
-        float decelY = (x(3)/speed) * params.ballFriction;
+        float decelX = (m_x(2)/speed) * m_params.ballFriction;
+        float decelY = (m_x(3)/speed) * m_params.ballFriction;
 
         // Calculate end position
-        relXDest = x(0) + x(2)*timeToStop + .5f*decelX*timeToStop*timeToStop;
-        relYDest = x(1) + x(3)*timeToStop + .5f*decelY*timeToStop*timeToStop;
+        m_rel_x_dest = m_x(0) + m_x(2)*timeToStop + .5f*decelX*timeToStop*timeToStop;
+        m_rel_y_dest = m_x(1) + m_x(3)*timeToStop + .5f*decelY*timeToStop*timeToStop;
 
         //Calculate the time until intersects with robots y axis
-        float timeToIntersect = NBMath::getLargestMagRoot(x(0),x(2),.5f*decelX);
+        float timeToIntersect = NBMath::getLargestMagRoot(m_x(0),m_x(2),.5f*decelX);
         // Use quadratic :(
-        relYIntersectDest = x(1) + x(3)*timeToStop + .5f*decelY*timeToStop*timeToStop;
+        m_rel_y_intersect_dest = m_x(1) + m_x(3)*timeToStop + .5f*decelY*timeToStop*timeToStop;
     }
 
 }
 
-} // namespace balltrack
-} // namespace man
+} // balltrack
+} // man
